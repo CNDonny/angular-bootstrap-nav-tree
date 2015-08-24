@@ -8,13 +8,24 @@
     '$timeout', function($timeout) {
       return {
         restrict: 'E',
-        template: "<ul class=\"nav nav-list nav-pills nav-stacked abn-tree\">\n  <li ng-repeat=\"row in tree_rows | filter:{visible:true} track by row.branch.uid\" ng-animate=\"'abn-tree-animate'\" ng-class=\"'level-' + {{ row.level }} + (row.branch.selected ? ' active':'') + ' ' +row.classes.join(' ')\" class=\"abn-tree-row\"><a ng-click=\"user_clicks_branch(row.branch)\"><i ng-class=\"row.tree_icon\" ng-click=\"row.branch.expanded = !row.branch.expanded\" class=\"indented tree-icon\"> </i><span class=\"indented tree-label\">{{ row.label }} </span></a></li>\n</ul>",
+        template: "<ul class=\"nav nav-list nav-pills nav-stacked abn-tree\"> \
+		                <li ng-repeat=\"row in tree_rows | filter:{visible:true} track by row.branch.uid\"  ng-animate=\"'abn-tree-animate'\" \
+		                    ng-class=\"'level-' + {{ row.level }} + (row.branch.selected ? ' active':'') + ' ' +row.classes.join(' ')\" \
+		                    class=\"abn-tree-row\"><a ng-click=\"user_clicks_branch(row.branch)\" ng-if=\"row.level < expandMaxLevel + 1\"> \
+		                    <i ng-class=\"row.tree_icon\" ng-click=\"row.branch.expanded = !row.branch.expanded\" class=\"indented tree-icon\" \
+		                        ng-if=\"row.level < expandMaxLevel\"> \
+		                    </i> \
+		                    <i class=\"indented tree-icon fa fa-file-o\" ng-if=\"row.level > expandMaxLevel - 1\"></i> \
+		                    <span class=\"indented tree-label\">{{ row.label }} </span> \
+		                    <span style=\"float: right\"><i class=\"fa fa-times\" ng-click=\"user_remove_branch(row.branch)\"></i></span> \
+		                </a></li></ul>",
         replace: true,
         scope: {
           treeData: '=',
           onSelect: '&',
           initialSelection: '@',
-          treeControl: '='
+          treeControl: '=',
+          expandMaxLevel: '@',		//the max level can be expanded, if level lower than expandMaxlevel, the list will not display
         },
         link: function(scope, element, attrs) {
           var error, expand_all_parents, expand_level, for_all_ancestors, for_each_branch, get_parent, n, on_treeData_change, select_branch, selected_branch, tree;
@@ -107,6 +118,27 @@
               return select_branch(branch);
             }
           };
+					scope.user_remove_branch = function (b) {
+          	var p = get_parent(b);
+              if (p) {
+                for (var i in p.children) {
+                    if (p.children[i].uid == b.uid) {
+              	      p.children.splice(i,1);
+              	      break;
+                    }
+                }
+                scope.onSelect(null);
+            }
+            else
+            {
+                for (var i in scope.treeData) {
+                    if (scope.treeData[i].uid == b.uid) {
+              	      scope.treeData.splice(i,1);
+              	      break;
+                    }
+                }
+            }
+          }
           get_parent = function(child) {
             var parent;
             parent = void 0;
@@ -185,6 +217,7 @@
             });
             add_branch_to_list = function(level, branch, visible) {
               var child, child_visible, tree_icon, _i, _len, _ref, _results;
+              branch.level = level;
               if (branch.expanded == null) {
                 branch.expanded = false;
               }
@@ -298,10 +331,10 @@
               };
               tree.add_branch = function(parent, new_branch) {
                 if (parent != null) {
-                  parent.children.push(new_branch);
+                  parent.children.unshift(new_branch);	//the habit, if user add a item, he will see it immediately
                   parent.expanded = true;
                 } else {
-                  scope.treeData.push(new_branch);
+                  scope.treeData.unshift(new_branch);
                 }
                 return new_branch;
               };
